@@ -4,7 +4,6 @@ const http = require("http");
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 
-// IMPORTANT: Allow CORS for Socket.io on Render
 const io = new Server(server, {
     cors: {
         origin: "*"
@@ -13,21 +12,28 @@ const io = new Server(server, {
 
 app.use(express.static("public"));
 
+// When a user connects
 io.on("connection", (socket) => {
-    console.log("A user connected: " + socket.id);
-    
+    console.log("Connected:", socket.id);
+
+    // User identifies as admin or normal user
+    socket.on("role", (roleType) => {
+        socket.join(roleType);  // user joins "admin" or "user"
+        console.log(socket.id, "joined role:", roleType);
+    });
+
+    // User sends camera frame → Send ONLY to admin
     socket.on("camera-frame", (data) => {
-        io.emit("stream", data);
+        io.to("admin").emit("stream", data);  
     });
 
     socket.on("disconnect", () => {
-        console.log("User disconnected: " + socket.id);
+        console.log("Disconnected:", socket.id);
     });
 });
 
-// FIXED: Render requires dynamic PORT
+// Required for Render (dynamic port)
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
