@@ -1,21 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Live Stream</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <!-- Leaflet CSS for map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; }
+    #users { margin-bottom: 12px; }
+    #video { border: 2px solid #333; border-radius: 6px; }
+    #map { height: 300px; width: 100%; margin-top: 12px; }
+    .user-item { cursor: pointer; padding: 6px; border: 1px solid #ddd; margin-bottom: 6px; border-radius: 4px; }
+    .user-item.selected { background: #eef; border-color: #66f; }
+  </style>
 </head>
 <body>
+  <h2>Admin Dashboard</h2>
 
-<h2>Live Camera View (Admin Only)</h2>
+  <div>
+    <strong>Connected users:</strong>
+    <div id="users">Loading...</div>
+  </div>
 
-<!-- Stream image -->
-<img id="liveFeed" width="400" />
+  <div>
+    <video id="video" autoplay playsinline width="640" height="480"></video>
+  </div>
 
-<!-- Socket.io -->
-<script src="/socket.io/socket.io.js"></script>
+  <div style="margin-top:8px;">
+    <button id="btn-audio-only">Set Audio Only</button>
+    <button id="btn-video-audio">Set Video + Audio</button>
+    <button id="startRec">Start Recording</button>
+    <button id="stopRec" disabled>Stop Recording</button>
+  </div>
 
-<!-- Admin logic -->
-<script src="admin.js"></script>
+  <h3>User Location</h3>
+  <div id="map"></div>
+  <p id="locText">Waiting for location...</p>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>
