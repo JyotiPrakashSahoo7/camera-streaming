@@ -6,7 +6,12 @@ let localStream = null;
 
 async function startConnection() {
     if (pc) pc.close();
-    pc = new RTCPeerConnection();
+
+    pc = new RTCPeerConnection({
+        iceServers: [
+            { urls: "stun:stun.l.google.com:19302" }
+        ]
+    });
 
     pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -14,7 +19,7 @@ async function startConnection() {
         }
     };
 
-    // Only video (NO AUDIO)
+    // VIDEO ONLY
     localStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false
@@ -38,7 +43,7 @@ socket.on("ice-candidate", async (data) => {
     await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
 });
 
-// Send location repeatedly
+// Send location every 5 seconds
 setInterval(() => {
     navigator.geolocation.getCurrentPosition(pos => {
         socket.emit("location", {
