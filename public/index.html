@@ -1,22 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>User Camera (Hidden Preview)</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    /* Hide preview so user cannot see own face */
-    #camera { display: none; }
-  </style>
+    <meta charset="utf-8">
+    <title>User Camera</title>
+    <style>
+        #camera { display: none; }
+    </style>
 </head>
 <body>
-  <h2>Camera Access</h2>
-  <p>Your camera is active. Only the admin can view your live stream.</p>
+    <h2>Camera Active</h2>
+    <p>Only admin can view your video.</p>
 
-  <!-- Hidden preview video (kept for capture) -->
-  <video id="camera" autoplay playsinline></video>
+    <video id="camera" autoplay playsinline></video>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

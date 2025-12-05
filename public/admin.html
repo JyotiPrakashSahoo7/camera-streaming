@@ -1,46 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
-  <!-- Leaflet CSS for map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    body { font-family: Arial, sans-serif; padding: 12px; }
-    #users { margin-bottom: 12px; }
-    #video { border: 2px solid #333; border-radius: 6px; }
-    #map { height: 300px; width: 100%; margin-top: 12px; }
-    .user-item { cursor: pointer; padding: 6px; border: 1px solid #ddd; margin-bottom: 6px; border-radius: 4px; }
-    .user-item.selected { background: #eef; border-color: #66f; }
-  </style>
+    <meta charset="utf-8">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #video { width: 600px; border: 2px solid black; }
+        #map { height: 300px; margin-top: 10px; }
+        .user-item { padding: 6px; border: 1px solid #555; margin: 5px; cursor: pointer; }
+        .selected { background: #cfe2ff; }
+    </style>
 </head>
 <body>
-  <h2>Admin Dashboard</h2>
 
-  <div>
-    <strong>Connected users:</strong>
-    <div id="users">Loading...</div>
-  </div>
+<h2>Admin Dashboard</h2>
 
-  <div>
-    <video id="video" autoplay playsinline width="640" height="480"></video>
-  </div>
+<h3>Users</h3>
+<div id="users">Loading…</div>
 
-  <div style="margin-top:8px;">
-    <button id="btn-audio-only">Set Audio Only</button>
-    <button id="btn-video-audio">Set Video + Audio</button>
-    <button id="startRec">Start Recording</button>
-    <button id="stopRec" disabled>Stop Recording</button>
-  </div>
+<video id="video" autoplay playsinline></video>
 
-  <h3>User Location</h3>
-  <div id="map"></div>
-  <p id="locText">Waiting for location...</p>
+<button id="startRec">Start Recording</button>
+<button id="stopRec" disabled>Stop Recording</button>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="admin.js"></script>
+<h3>User Location</h3>
+<div id="map"></div>
+<p id="locText">Waiting for location…</p>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="admin.js"></script>
 </body>
 </html>
