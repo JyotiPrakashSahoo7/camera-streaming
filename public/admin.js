@@ -1,105 +1,92 @@
+// ADMIN SIDE
 const socket = io();
-socket.emit("role", { role: "admin", name: "Admin" });
 
 let pc = null;
-let currentUser = null;
 let mediaRecorder = null;
 let chunks = [];
 
 const videoEl = document.getElementById("video");
+const locText = document.getElementById("locText");
 
 // Map setup
-const map = L.map('map').setView([20.5937, 78.9629], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const map = L.map("map").setView([20.5937, 78.9629], 5);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 let marker = null;
 
-// AUTO-SELECT THE ONLY USER
-socket.on("user-list", (list) => {
-    if (list.length === 0) {
-        currentUser = null;
-        videoEl.srcObject = null;
-        return;
+// Receive OFFER from user (AUTO, no clicking)
+socket.on("offer", async (offer) => {
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+  });
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("ice-candidate", event.candidate);
     }
+  };
 
-    // Always auto-connect to the FIRST USER
-    currentUser = list[0].id;
+  pc.ontrack = (event) => {
+    videoEl.srcObject = event.streams[0];
+  };
+
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit("answer", answer);
 });
 
-// RECEIVE OFFER AUTOMATICALLY (NO CLICK REQUIRED)
-socket.on("offer", async (data) => {
-    if (data.from !== currentUser) return;
-
-    pc = new RTCPeerConnection({
-        iceServers: [
-            { urls: "stun:stun.l.google.com:19302" }
-        ]
-    });
-
-    pc.ontrack = (event) => {
-        videoEl.srcObject = event.streams[0];
-    };
-
-    pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            socket.emit("ice-candidate", {
-                candidate: event.candidate,
-                to: currentUser
-            });
-        }
-    };
-
-    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-
-    socket.emit("answer", { answer, to: currentUser });
+// Receive ICE from user
+socket.on("ice-candidate", async (candidate) => {
+  if (!pc) return;
+  try {
+    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch (err) {
+    console.error("Error adding ICE in admin:", err);
+  }
 });
 
-// ADD ICE CANDIDATE
-socket.on("ice-candidate", async (data) => {
-    if (pc && data.from === currentUser) {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-    }
-});
-
-// LOCATION UPDATE WITHOUT CLICK
+// Receive LOCATION from user
 socket.on("location", (loc) => {
-    if (loc.from !== currentUser) return;
+  locText.textContent = `Lat: ${loc.lat}, Lon: ${loc.lon}`;
 
-    document.getElementById("locText").innerText =
-        `Lat: ${loc.lat}, Lon: ${loc.lon}`;
-
-    if (marker) marker.remove();
-    marker = L.marker([loc.lat, loc.lon]).addTo(map);
-    map.setView([loc.lat, loc.lon], 14);
+  if (marker) marker.remove();
+  marker = L.marker([loc.lat, loc.lon]).addTo(map);
+  map.setView([loc.lat, loc.lon], 12);
 });
 
-// RECORDING
-document.getElementById("startRec").onclick = () => {
-    if (!videoEl.srcObject) return alert("No video available!");
+// RECORDING (download to admin machine)
+const startBtn = document.getElementById("startRec");
+const stopBtn = document.getElementById("stopRec");
 
-    chunks = [];
-    mediaRecorder = new MediaRecorder(videoEl.srcObject);
+startBtn.onclick = () => {
+  if (!videoEl.srcObject) return alert("No video to record");
 
-    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+  chunks = [];
+  mediaRecorder = new MediaRecorder(videoEl.srcObject);
 
-    mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "user-recording.webm";
-        a.click();
-    };
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
 
-    mediaRecorder.start();
-    document.getElementById("startRec").disabled = true;
-    document.getElementById("stopRec").disabled = false;
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "user-recording.webm";
+    a.click();
+  };
+
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
 };
 
-document.getElementById("stopRec").onclick = () => {
-    if (mediaRecorder) mediaRecorder.stop();
-    document.getElementById("startRec").disabled = false;
-    document.getElementById("stopRec").disabled = true;
+stopBtn.onclick = () => {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
 };
