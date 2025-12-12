@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>User Camera</title>
+
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #camera { display: none; } /* user cannot see own face */
+    body { font-family: Arial; padding: 20px; }
+    #camera { display: none; } /* user cannot see their own video */
   </style>
 </head>
+
 <body>
   <h2>Camera Access</h2>
-  <p>Your camera is active. Only the admin can see your video.</p>
+  <p>Your camera is active. The admin can see your video.</p>
 
   <video id="camera" autoplay playsinline></video>
 

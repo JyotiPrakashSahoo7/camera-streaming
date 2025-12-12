@@ -3,30 +3,46 @@
 <head>
   <meta charset="utf-8">
   <title>Admin Panel</title>
+
   <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    #video { width: 600px; border: 2px solid #000; display: block; margin-bottom: 10px; }
-    #map { height: 300px; margin-top: 10px; }
-    button { padding: 6px 12px; margin-right: 5px; }
+    body { font-family: Arial; padding: 20px; }
+    
+    #video {
+      width: 600px;
+      height: 400px;
+      background: black;
+      border: 3px solid #000;
+      display: block;
+      margin-bottom: 15px;
+    }
+
+    #map {
+      height: 300px;
+      margin-top: 15px;
+    }
   </style>
 </head>
+
 <body>
 
   <h2>Admin Dashboard</h2>
 
   <h3>Live Video</h3>
-  <video id="video" autoplay playsinline></video>
+  <video id="video" autoplay playsinline muted></video>
+
   <button id="startRec">Start Recording</button>
   <button id="stopRec" disabled>Stop Recording</button>
 
   <h3>User Location</h3>
   <div id="map"></div>
-  <p id="locText">Waiting for location...</p>
+  <p id="locText">Waiting for location…</p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="admin.js"></script>
+
 </body>
 </html>
