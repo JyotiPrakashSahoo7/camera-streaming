@@ -11,26 +11,38 @@ const io = new Server(server, {
 
 app.use(express.static("public"));
 
-// Very simple signaling: broadcast to everyone except sender
+// Simple signaling and request-offer flow:
+// - user: sends 'offer' (on start or when requested)
+// - admin: when ready, emits 'admin-ready' -> server broadcasts 'request-offer'
+// - server forwards offer/answer/ice between peers using broadcast (except sender)
+
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // WebRTC offer from USER -> broadcast (ADMIN will listen)
+  // When admin is ready, tell users to send an offer (so admin won't miss it)
+  socket.on("admin-ready", () => {
+    console.log("Admin ready -> ask users to send offers");
+    // Tell all other clients (users) to create & send a fresh offer
+    socket.broadcast.emit("request-offer");
+  });
+
+  // User (or any client) sends an offer
   socket.on("offer", (offer) => {
+    // forward to everyone except sender (admin will receive it)
     socket.broadcast.emit("offer", offer);
   });
 
-  // WebRTC answer from ADMIN -> broadcast (USER will listen)
+  // Admin (or any client) sends answer
   socket.on("answer", (answer) => {
     socket.broadcast.emit("answer", answer);
   });
 
-  // ICE candidates both ways
+  // ICE candidates (both ways)
   socket.on("ice-candidate", (candidate) => {
     socket.broadcast.emit("ice-candidate", candidate);
   });
 
-  // Location from user -> admin
+  // Location messages (user -> admin)
   socket.on("location", (loc) => {
     socket.broadcast.emit("location", loc);
   });
