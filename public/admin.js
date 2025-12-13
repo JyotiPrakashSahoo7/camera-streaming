@@ -8,15 +8,14 @@ const videoEl = document.getElementById("video");
 const locText = document.getElementById("locText");
 
 // MAP
-let map = L.map("map").setView([20.5937, 78.9629], 5);
+const map = L.map("map").setView([20.5937, 78.9629], 5);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 let marker = null;
 
-// TELL SERVER ADMIN IS READY
+// Tell server admin is ready
 socket.emit("admin-ready");
-console.log("Admin ready sent");
 
-// CREATE ADMIN PEER CONNECTION
+// Create peer connection
 function createAdminPC() {
   const pc = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -34,10 +33,10 @@ function createAdminPC() {
   return pc;
 }
 
-// WHEN OFFER COMES FROM USER
+// Receive offer from user
 socket.on("offer", async (offer) => {
   if (pc) {
-    try { pc.close(); } catch (e) {}
+    try { pc.close(); } catch {}
   }
 
   pc = createAdminPC();
@@ -47,13 +46,14 @@ socket.on("offer", async (offer) => {
   await pc.setLocalDescription(answer);
 
   socket.emit("answer", answer);
-  console.log("Answer sent");
 });
 
-// ICE
+// ICE from user
 socket.on("ice-candidate", async (candidate) => {
   if (pc) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e){}
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } catch {}
   }
 });
 
@@ -66,11 +66,13 @@ socket.on("location", (loc) => {
   map.setView([loc.lat, loc.lon], 12);
 });
 
-// RECORDING
-const startBtn = document.getElementById("startRec");
-const stopBtn = document.getElementById("stopRec");
+// 🔥 ADMIN → SWITCH USER CAMERA
+document.getElementById("switchUserCam").onclick = () => {
+  socket.emit("switch-camera");
+};
 
-startBtn.onclick = () => {
+// RECORDING
+document.getElementById("startRec").onclick = () => {
   if (!videoEl.srcObject) return alert("No video stream");
 
   chunks = [];
@@ -90,12 +92,12 @@ startBtn.onclick = () => {
   };
 
   mediaRecorder.start();
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
+  document.getElementById("startRec").disabled = true;
+  document.getElementById("stopRec").disabled = false;
 };
 
-stopBtn.onclick = () => {
+document.getElementById("stopRec").onclick = () => {
   if (mediaRecorder) mediaRecorder.stop();
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
+  document.getElementById("startRec").disabled = false;
+  document.getElementById("stopRec").disabled = true;
 };

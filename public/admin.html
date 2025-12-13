@@ -5,23 +5,30 @@
   <title>Admin Panel</title>
 
   <link rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
     body { font-family: Arial; padding: 20px; }
-    
+
     #video {
       width: 600px;
       height: 400px;
       background: black;
-      border: 3px solid #000;
+      border: 2px solid #000;
       display: block;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 8px 14px;
+      font-size: 15px;
+      margin-right: 10px;
+      margin-bottom: 10px;
     }
 
     #map {
       height: 300px;
-      margin-top: 15px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -30,9 +37,11 @@
 
   <h2>Admin Dashboard</h2>
 
-  <h3>Live Video</h3>
+  <h3>Live User Video</h3>
   <video id="video" autoplay playsinline muted></video>
 
+  <br>
+  <button id="switchUserCam">Switch User Camera</button>
   <button id="startRec">Start Recording</button>
   <button id="stopRec" disabled>Stop Recording</button>
 

