@@ -1,8 +1,9 @@
-// USER SIDE — FINAL STABLE VERSION
+// USER SIDE — FINAL RELIABLE CAMERA SWITCH
 const socket = io();
 
-let pc = null;
-let stream = null;
+let pc;
+let localStream;
+let videoSender; // RTCRtpSender for video
 let videoDevices = [];
 let currentDeviceIndex = 0;
 
@@ -10,54 +11,52 @@ let currentDeviceIndex = 0;
 async function loadCameras() {
   const devices = await navigator.mediaDevices.enumerateDevices();
   videoDevices = devices.filter(d => d.kind === "videoinput");
-
-  if (videoDevices.length === 0) {
-    alert("No camera found");
-  }
 }
 
-// Create PeerConnection
-function createPC(stream) {
-  const pc = new RTCPeerConnection({
+// Create PeerConnection ONCE
+function createPC() {
+  pc = new RTCPeerConnection({
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
   });
 
   pc.onicecandidate = e => {
     if (e.candidate) socket.emit("ice-candidate", e.candidate);
   };
-
-  // ✅ CORRECT: add track WITH stream
-  stream.getTracks().forEach(track => {
-    pc.addTrack(track, stream);
-  });
-
-  return pc;
 }
 
 // Start camera with specific deviceId
 async function startCamera(deviceId) {
-  // stop old stream
-  if (stream) stream.getTracks().forEach(t => t.stop());
-
-  stream = await navigator.mediaDevices.getUserMedia({
+  // Get stream
+  const stream = await navigator.mediaDevices.getUserMedia({
     video: { deviceId: { exact: deviceId } },
     audio: false
   });
 
-  // hidden local video
+  const videoTrack = stream.getVideoTracks()[0];
+
+  // Hidden local preview
   document.getElementById("camera").srcObject = stream;
 
-  // reset peer connection
-  if (pc) pc.close();
-  pc = createPC(stream);
+  // First time: add track
+  if (!videoSender) {
+    localStream = stream;
+    videoSender = pc.addTrack(videoTrack, stream);
+  } else {
+    // 🔥 THIS IS THE KEY FIX
+    await videoSender.replaceTrack(videoTrack);
+  }
 
-  // create and send offer
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  socket.emit("offer", offer);
+  // Stop old tracks AFTER replace
+  if (localStream) {
+    localStream.getTracks().forEach(t => {
+      if (t !== videoTrack) t.stop();
+    });
+  }
+
+  localStream = stream;
 }
 
-// Switch camera (admin-controlled)
+// Switch camera
 async function switchCamera() {
   if (videoDevices.length < 2) return;
 
@@ -67,25 +66,21 @@ async function switchCamera() {
   await startCamera(videoDevices[currentDeviceIndex].deviceId);
 }
 
-// 🔁 ADMIN triggers camera switch
+// Admin triggers switch
 socket.on("switch-camera", () => {
   switchCamera();
 });
 
-// ADMIN answer
+// Receive answer
 socket.on("answer", async answer => {
-  if (pc) {
-    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  }
+  await pc.setRemoteDescription(new RTCSessionDescription(answer));
 });
 
 // ICE from admin
 socket.on("ice-candidate", async candidate => {
-  if (pc && candidate) {
-    try {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate));
-    } catch {}
-  }
+  try {
+    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+  } catch {}
 });
 
 // Location updates
@@ -102,10 +97,23 @@ setInterval(() => {
 (async () => {
   await loadCameras();
 
-  // Prefer back camera if exists
+  if (videoDevices.length === 0) {
+    alert("No camera found");
+    return;
+  }
+
+  // Prefer back camera
   if (videoDevices.length > 1) {
     currentDeviceIndex = videoDevices.length - 1;
   }
 
+  createPC();
+
+  // Start first camera
   await startCamera(videoDevices[currentDeviceIndex].deviceId);
+
+  // Create offer ONCE
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit("offer", offer);
 })();
